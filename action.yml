@@ -73,6 +73,16 @@ runs:
           echo "suffix=amd-64" >> $GITHUB_OUTPUT
         fi
 
+    - name: Ensure patches folder exists
+      shell: bash
+      working-directory: platform/7x
+      run: |
+        # Create patches directory structure if it doesn't exist
+        # This is needed for platform versions 7.2+ which don't have patches
+        # Versions 7.0 and 7.1 have patches, but 7.3, 7.4, etc. do not
+        mkdir -p patches/${{ inputs.version }}
+        echo "Created patches/${{ inputs.version }} directory (if it didn't exist)"
+
     - name: Build and push platform-base image
       if: inputs.image_type == 'base'
       shell: bash
