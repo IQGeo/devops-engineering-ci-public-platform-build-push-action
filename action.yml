@@ -98,68 +98,26 @@ runs:
         mkdir -p patches/${{ inputs.version }}
         echo "Created patches/${{ inputs.version }} directory (if it didn't exist)"
 
-    - name: Build and push platform-base image
-      if: inputs.image_type == 'base'
+    - name: Determine CONTAINER_REGISTRY build arg
+      id: registry
       shell: bash
-      working-directory: platform/7x
       run: |
-        docker build \
-          --build-arg PLATFORM_VERSION=${{ inputs.version }} \
-          --build-arg CONTAINER_REGISTRY=${{ inputs.acr }}/engineering/ \
-          -f ${{ inputs.dockerfile }} \
-          -t ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
-          .
-        docker push ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }}
+        # For base image, use engineering/ path (for platform-prereqs-minimal)
+        # For other images, use engineering_prefix/ path (for previously built platform images)
+        if [ "${{ inputs.image_type }}" == "base" ]; then
+          echo "value=${{ inputs.acr }}/engineering/" >> $GITHUB_OUTPUT
+        else
+          echo "value=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/" >> $GITHUB_OUTPUT
+        fi
 
-    - name: Build and push platform-build image
-      if: inputs.image_type == 'build'
-      shell: bash
-      working-directory: platform/7x
-      run: |
-        docker build \
-          --build-arg PLATFORM_VERSION=${{ inputs.version }} \
-          --build-arg CONTAINER_REGISTRY=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/ \
-          --build-arg PLATFORM_BASE=platform/platform-base \
-          -f ${{ inputs.dockerfile }} \
-          -t ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
-          .
-        docker push ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }}
-
-    - name: Build and push platform-appserver image
-      if: inputs.image_type == 'appserver'
-      shell: bash
-      working-directory: platform/7x
-      run: |
-        docker build \
-          --build-arg PLATFORM_VERSION=${{ inputs.version }} \
-          --build-arg CONTAINER_REGISTRY=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/ \
-          -f ${{ inputs.dockerfile }} \
-          -t ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
-          .
-        docker push ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }}
-
-    - name: Build and push platform-tools image
-      if: inputs.image_type == 'tools'
-      shell: bash
-      working-directory: platform/7x
-      run: |
-        docker build \
-          --build-arg PLATFORM_VERSION=${{ inputs.version }} \
-          --build-arg CONTAINER_REGISTRY=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/ \
-          -f ${{ inputs.dockerfile }} \
-          -t ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
-          .
-        docker push ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }}
-
-    - name: Build and push platform-devenv image
-      if: inputs.image_type == 'devenv'
+    - name: Build and push platform image
       shell: bash
       working-directory: platform/7x
       run: |
         docker build \
           --build-arg PLATFORM_VERSION=${{ inputs.version }} \
           --build-arg DEV_TOOLS_VERSION=${{ inputs.dev_tools_version }} \
-          --build-arg CONTAINER_REGISTRY=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/ \
+          --build-arg CONTAINER_REGISTRY=${{ steps.registry.outputs.value }} \
           --build-arg PLATFORM_BASE=platform/platform-base \
           -f ${{ inputs.dockerfile }} \
           -t ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
