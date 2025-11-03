@@ -46,6 +46,14 @@ inputs:
     description: 'Dev tools version for devenv image build (only used for devenv)'
     type: string
     required: false
+  obfuscate:
+    description: 'Whether to obfuscate the platform code (unset, false, true)'
+    type: string
+    default: 'unset'
+  platform_base:
+    description: 'Platform base image name to use (platform/platform-base or platform/platform-base-clear)'
+    type: string
+    default: 'platform/platform-base'
 
 runs:
   using: "composite"
@@ -102,9 +110,9 @@ runs:
       id: registry
       shell: bash
       run: |
-        # For base image, use engineering/ path (for platform-prereqs-minimal)
+        # For base and base-clear images, use engineering/ path (for platform-prereqs-minimal)
         # For other images, use engineering_prefix/ path (for previously built platform images)
-        if [ "${{ inputs.image_type }}" == "base" ]; then
+        if [ "${{ inputs.image_type }}" == "base" ] || [ "${{ inputs.image_type }}" == "base-clear" ]; then
           echo "value=${{ inputs.acr }}/engineering/" >> $GITHUB_OUTPUT
         else
           echo "value=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/" >> $GITHUB_OUTPUT
@@ -118,7 +126,8 @@ runs:
           --build-arg PLATFORM_VERSION=${{ inputs.version }} \
           --build-arg DEV_TOOLS_VERSION=${{ inputs.dev_tools_version }} \
           --build-arg CONTAINER_REGISTRY=${{ steps.registry.outputs.value }} \
-          --build-arg PLATFORM_BASE=platform/platform-base \
+          --build-arg PLATFORM_BASE=${{ inputs.platform_base }} \
+          --build-arg OBFUSCATE=${{ inputs.obfuscate }} \
           -f ${{ inputs.dockerfile }} \
           -t ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
           .
