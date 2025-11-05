@@ -15,13 +15,21 @@ inputs:
     required: true
     type: string
   image_type:
-    description: 'Type of platform image to build (base, build, appserver, tools, devenv)'
+    description: 'Type of platform image to build (base, build, appserver, tools, devenv, devdb-build, devdb-appserver, devdb-tools, devdb-qa-appserver)'
     required: true
     type: string
   dockerfile:
     description: 'Name of the dockerfile to use (dockerfile.base, dockerfile.build, etc.)'
     required: true
     type: string
+  docker_context:
+    description: 'Docker build context directory (. for platform/7x, deployment for deployment/)'
+    type: string
+    default: '.'
+  modules:
+    description: 'Comma-separated list of modules for injector images (only needed for devdb builds)'
+    type: string
+    required: false
   acr:
     description: 'Azure container registry server name'
     required: true
@@ -62,6 +70,7 @@ runs:
       uses: actions/checkout@v4
       with:
         repository: IQGeo/utils-docker-platform
+        ref: devops/ET-734-platform-qa-deployment-folder
         token: ${{ inputs.gh_token }}
 
     - name: Download binaries artifacts
@@ -111,24 +120,38 @@ runs:
       shell: bash
       run: |
         # For base and base-clear images, use engineering/ path (for platform-prereqs-minimal)
+        # For devdb images, use engineering_prefix/ path (for injector and platform images)
         # For other images, use engineering_prefix/ path (for previously built platform images)
         if [ "${{ inputs.image_type }}" == "base" ] || [ "${{ inputs.image_type }}" == "base-clear" ]; then
           echo "value=${{ inputs.acr }}/engineering/" >> $GITHUB_OUTPUT
         else
           echo "value=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/" >> $GITHUB_OUTPUT
         fi
+    
+    - name: Determine working directory and image name
+      id: build_context
+      shell: bash
+      run: |
+        if [ "${{ inputs.docker_context }}" == "deployment" ]; then
+          echo "workdir=deployment" >> $GITHUB_OUTPUT
+          echo "image_name=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform-${{ inputs.image_type }}" >> $GITHUB_OUTPUT
+        else
+          echo "workdir=platform/7x" >> $GITHUB_OUTPUT
+          echo "image_name=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}" >> $GITHUB_OUTPUT
+        fi
 
     - name: Build and push platform image
       shell: bash
-      working-directory: platform/7x
+      working-directory: ${{ steps.build_context.outputs.workdir }}
       run: |
         docker build \
+          --build-arg VERSION=${{ inputs.version }} \
           --build-arg PLATFORM_VERSION=${{ inputs.version }} \
           --build-arg DEV_TOOLS_VERSION=${{ inputs.dev_tools_version }} \
           --build-arg CONTAINER_REGISTRY=${{ steps.registry.outputs.value }} \
           --build-arg PLATFORM_BASE=${{ inputs.platform_base }} \
           --build-arg OBFUSCATE=${{ inputs.obfuscate }} \
           -f ${{ inputs.dockerfile }} \
-          -t ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
+          -t ${{ steps.build_context.outputs.image_name }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
           .
-        docker push ${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }}
+        docker push ${{ steps.build_context.outputs.image_name }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }}
