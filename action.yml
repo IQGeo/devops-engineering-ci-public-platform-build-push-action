@@ -23,7 +23,7 @@ inputs:
     required: true
     type: string
   docker_context:
-    description: 'Docker build context directory (. for platform/7x, deployment for deployment/)'
+    description: 'Docker build context directory (. for platform/7x, deployment-devdb for deployment-devdb/)'
     type: string
     default: '.'
   modules:
@@ -70,7 +70,7 @@ runs:
       uses: actions/checkout@v4
       with:
         repository: IQGeo/utils-docker-platform
-        ref: devops/ET-734-platform-qa-deployment-folder
+        ref: main
         token: ${{ inputs.gh_token }}
 
     - name: Download binaries artifacts
@@ -132,8 +132,8 @@ runs:
       id: build_context
       shell: bash
       run: |
-        if [ "${{ inputs.docker_context }}" == "deployment" ]; then
-          echo "workdir=deployment" >> $GITHUB_OUTPUT
+        if [ "${{ inputs.docker_context }}" == "deployment-devdb" ]; then
+          echo "workdir=deployment-devdb" >> $GITHUB_OUTPUT
           echo "image_name=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform-${{ inputs.image_type }}" >> $GITHUB_OUTPUT
         else
           echo "workdir=platform/7x" >> $GITHUB_OUTPUT
