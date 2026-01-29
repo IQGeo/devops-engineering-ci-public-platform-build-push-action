@@ -112,10 +112,10 @@ runs:
         pwd
         ls -la
         ls -la utils-language-packs
-        ls -la utils-language-packs/platform || echo "Platform directory not found in language packs"
+        ls -la utils-language-packs/Platform || echo "Platform directory not found in language packs"
         echo "Copy Language Packs from utils-language-packs repo"
-        if [ -d "utils-language-packs/platform/${{ inputs.shortened_version }}" ]; then
-          cp -RT utils-language-packs/platform/${{ inputs.shortened_version }}/ platform/7x/languagepacks/
+        if [ -d "utils-language-packs/Platform/${{ inputs.shortened_version }}" ]; then
+          cp -RT utils-language-packs/Platform/${{ inputs.shortened_version }}/ platform/7x/languagepacks/
           echo "Language packs copied successfully"
           ls -la platform/7x/languagepacks/
         else
