@@ -54,6 +54,10 @@ inputs:
     description: 'Dev tools version for devenv image build (only used for devenv)'
     type: string
     required: false
+  shortened_version:
+    description: 'Shortened version for language packs repo'
+    required: false
+    type: string    
   obfuscate:
     description: 'Whether to obfuscate the platform code (unset, false, true)'
     type: string
@@ -73,6 +77,13 @@ runs:
         ref: master
         token: ${{ inputs.gh_token }}
 
+    - name: Checkout Language Packs
+      uses: actions/checkout@v4
+      with:
+        repository: IQGeo/utils-language-packs
+        path: utils-language-packs
+        token: ${{ inputs.gh_token }}        
+
     - name: Download binaries artifacts
       uses: actions/download-artifact@v4
       with:
@@ -87,6 +98,29 @@ runs:
         ls -la
         echo "Checking for IQGeo-Core tar.gz files:"
         ls -la IQGeo-Core-*.tar.gz || echo "No IQGeo-Core tar.gz files found"
+
+    - name: Copy Language Packs from utils-language-packs
+      continue-on-error: true
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.shortened_version }}" ]; then
+          echo "shortened_version not provided, skipping language pack copy"
+          exit 0
+        fi
+        
+        echo "Copying language packs from utils-language-packs for platform"
+        pwd
+        ls -la
+        ls -la utils-language-packs
+        ls -la utils-language-packs/Platform || echo "Platform directory not found in language packs"
+        echo "Copy Language Packs from utils-language-packs repo"
+        if [ -d "utils-language-packs/Platform/${{ inputs.shortened_version }}" ]; then
+          cp -RT utils-language-packs/Platform/${{ inputs.shortened_version }}/ platform/7x/languagepacks/
+          echo "Language packs copied successfully"
+          ls -la platform/7x/languagepacks/
+        else
+          echo "Language pack directory for platform/${{ inputs.shortened_version }} not found"
+        fi
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
