@@ -179,13 +179,14 @@ runs:
       working-directory: ${{ steps.build_context.outputs.workdir }}
       run: |
         docker build \
+          --provenance=false \
+          --sbom=false \
           --build-arg VERSION=${{ inputs.version }} \
           --build-arg PLATFORM_VERSION=${{ inputs.version }} \
           --build-arg DEV_TOOLS_VERSION=${{ inputs.dev_tools_version }} \
           --build-arg CONTAINER_REGISTRY=${{ steps.registry.outputs.value }} \
           --build-arg PLATFORM_BASE=${{ inputs.platform_base }} \
           --build-arg OBFUSCATE=${{ inputs.obfuscate }} \
-          --build-arg provenance=false \
           -f ${{ inputs.dockerfile }} \
           -t ${{ steps.build_context.outputs.image_name }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
           .
