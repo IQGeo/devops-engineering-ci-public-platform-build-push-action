@@ -185,6 +185,7 @@ runs:
           --build-arg CONTAINER_REGISTRY=${{ steps.registry.outputs.value }} \
           --build-arg PLATFORM_BASE=${{ inputs.platform_base }} \
           --build-arg OBFUSCATE=${{ inputs.obfuscate }} \
+          --build-arg provenance=false \
           -f ${{ inputs.dockerfile }} \
           -t ${{ steps.build_context.outputs.image_name }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
           .
