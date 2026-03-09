@@ -192,7 +192,7 @@ runs:
           --sbom=false \
           --build-arg VERSION=${{ inputs.version }} \
           --build-arg PREQS_TAG=${{ inputs.preqs_tag }} \
-          --build-arg PIP_FLAGS=${{ inputs.pip_flags }} \          
+          --build-arg PIP_FLAGS="${{ inputs.pip_flags }}" \
           --build-arg PLATFORM_VERSION=${{ inputs.version }} \
           --build-arg DEV_TOOLS_VERSION=${{ inputs.dev_tools_version }} \
           --build-arg CONTAINER_REGISTRY=${{ steps.registry.outputs.value }} \
