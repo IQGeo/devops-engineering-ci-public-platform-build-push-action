@@ -46,6 +46,15 @@ inputs:
     description: 'Engineering prefix to place images in ACR'
     type: string
     default: devops_sandbox_engineering
+  preqs_tag:
+    description: 'Tag for pre-reqs image'
+    required: false
+    type: string
+    default: '7'     
+  pip_flags:
+    description: 'Tag for pre-reqs image'
+    required: false
+    type: string      
   gh_token:
     description: 'GitHub token to clone utils-docker-platform repo'
     required: true
@@ -182,6 +191,8 @@ runs:
           --provenance=false \
           --sbom=false \
           --build-arg VERSION=${{ inputs.version }} \
+          --build-arg PREQS_TAG=${{ inputs.preqs_tag }} \
+          --build-arg PIP_FLAGS=${{ inputs.pip_flags }} \          
           --build-arg PLATFORM_VERSION=${{ inputs.version }} \
           --build-arg DEV_TOOLS_VERSION=${{ inputs.dev_tools_version }} \
           --build-arg CONTAINER_REGISTRY=${{ steps.registry.outputs.value }} \
