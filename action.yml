@@ -83,7 +83,7 @@ runs:
       uses: actions/checkout@v4
       with:
         repository: IQGeo/utils-docker-platform
-        ref: master
+        ref: devops/add-jwt
         token: ${{ inputs.gh_token }}
 
     - name: Checkout Language Packs
