@@ -91,7 +91,7 @@ runs:
       uses: actions/checkout@v4
       with:
         repository: IQGeo/utils-docker-platform
-        ref: devops/et-946-codeartifact-cache
+        ref: master
         token: ${{ inputs.gh_token }}
 
     - name: Checkout Language Packs
