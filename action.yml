@@ -75,6 +75,14 @@ inputs:
     description: 'Platform base image name to use (platform/platform-base or platform/platform-base-clear)'
     type: string
     default: 'platform/platform-base'
+  aws_region:
+    description: 'AWS region hosting the CodeArtifact mirror and SSM parameters'
+    type: string
+    default: 'eu-west-1'
+  ssm_prefix:
+    description: 'SSM Parameter Store prefix where the CodeArtifact endpoints/domain are published'
+    type: string
+    default: '/platform-ci/codeartifact'
 
 runs:
   using: "composite"
@@ -183,6 +191,35 @@ runs:
           echo "image_name=${{ inputs.acr }}/${{ inputs.engineering_prefix }}/platform/platform-${{ inputs.image_type }}" >> $GITHUB_OUTPUT
         fi
 
+    - name: Configure CodeArtifact mirror
+      id: codeartifact
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws_region }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
+        SSM_PREFIX: ${{ inputs.ssm_prefix }}
+      run: |
+        set -euo pipefail
+        # Read endpoints/domain published by the codeartifact Terraform stack.
+        DOMAIN=$(aws ssm get-parameter --name "$SSM_PREFIX/domain" --query Parameter.Value --output text)
+        DOMAIN_OWNER=$(aws ssm get-parameter --name "$SSM_PREFIX/domain_owner" --query Parameter.Value --output text)
+        NPM_ENDPOINT=$(aws ssm get-parameter --name "$SSM_PREFIX/npm_endpoint" --query Parameter.Value --output text)
+        PYPI_ENDPOINT=$(aws ssm get-parameter --name "$SSM_PREFIX/pypi_endpoint" --query Parameter.Value --output text)
+
+        # Mint a short-lived (<=12h) auth token using the runner instance role.
+        # The token is never stored in SSM; it is injected per build via BuildKit secret.
+        CA_TOKEN=$(aws codeartifact get-authorization-token \
+          --domain "$DOMAIN" \
+          --domain-owner "$DOMAIN_OWNER" \
+          --query authorizationToken --output text)
+
+        echo "::add-mask::$CA_TOKEN"
+        echo "CA_TOKEN=$CA_TOKEN" >> "$GITHUB_ENV"
+        echo "npm_registry=$NPM_ENDPOINT" >> "$GITHUB_OUTPUT"
+        echo "pip_index_host=$PYPI_ENDPOINT" >> "$GITHUB_OUTPUT"
+        echo "Resolved CodeArtifact npm registry: $NPM_ENDPOINT"
+        echo "Resolved CodeArtifact pypi endpoint: $PYPI_ENDPOINT"
+
     - name: Build and push platform image
       shell: bash
       working-directory: ${{ steps.build_context.outputs.workdir }}
@@ -198,6 +235,9 @@ runs:
           --build-arg CONTAINER_REGISTRY=${{ steps.registry.outputs.value }} \
           --build-arg PLATFORM_BASE=${{ inputs.platform_base }} \
           --build-arg OBFUSCATE=${{ inputs.obfuscate }} \
+          --secret id=ca_token,env=CA_TOKEN \
+          --build-arg NPM_REGISTRY=${{ steps.codeartifact.outputs.npm_registry }} \
+          --build-arg PIP_INDEX_HOST=${{ steps.codeartifact.outputs.pip_index_host }} \
           -f ${{ inputs.dockerfile }} \
           -t ${{ steps.build_context.outputs.image_name }}:${{ inputs.build_id }}_${{ steps.arch.outputs.suffix }} \
           .
